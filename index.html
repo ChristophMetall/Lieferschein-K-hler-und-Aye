@@ -118,6 +118,13 @@
     .positionen-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .header-line { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .cb-box { border-color: #333 !important; }
+
+    /* Saubere Seitenumbrüche */
+    .position-row { break-inside: avoid; page-break-inside: avoid; }
+    .positionen-header { break-after: avoid; page-break-after: avoid; }
+    .vzk-container, .vzk-block, .vzk-block-inner { break-inside: avoid; page-break-inside: avoid; }
+    .foto-preview, .desc-area { break-inside: avoid; page-break-inside: avoid; }
+    .header, .empfaenger-block, .datum-row, .betreff-row { break-inside: avoid; page-break-inside: avoid; }
   }
 </style>
 </head>
@@ -378,10 +385,34 @@ function handleFile(idx, isCamera) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
-    positions[idx].imgSrc = e.target.result;
-    const img = document.getElementById('preview-' + idx);
-    img.src = e.target.result;
-    img.style.display = 'block';
+    const tmp = new Image();
+    tmp.onload = function() {
+      // Foto verkleinern & komprimieren, damit die PDF klein bleibt
+      const MAX = 1000;
+      let w = tmp.width, h = tmp.height;
+      if (w >= h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      else if (h > w && h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+      let dataUrl;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(tmp, 0, 0, w, h);
+        dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      } catch (err) {
+        dataUrl = e.target.result; // Fallback: Original verwenden
+      }
+      positions[idx].imgSrc = dataUrl;
+      const prev = document.getElementById('preview-' + idx);
+      prev.src = dataUrl;
+      prev.style.display = 'block';
+    };
+    tmp.onerror = function() {
+      positions[idx].imgSrc = e.target.result;
+      const prev = document.getElementById('preview-' + idx);
+      prev.src = e.target.result;
+      prev.style.display = 'block';
+    };
+    tmp.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
